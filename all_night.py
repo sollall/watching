@@ -14,32 +14,45 @@ import simple_graph
 
 """__init__"""
 """シリアル通信の入り口は4つにしておくか　USBポートは4つまでなので"""
+"""
+dataframeのcolumn数は4に固定
+USBを抜いてからまた指すとカラムが入れ替わったりする　しゃあなくない？
+ほかにつけたい機能は
+・dataframeが空なら削除
+
+mergeしたい機能は
+・OCRで測定値読み取り
+・振動で機械が動いてるか確認
+・センサとGPIOを直接つないで測定(最終手段)
+"""
+
+
 N=4
-sers=functions.get_ser(N)
+sers=functions.get_ser()
 
 alarm=[0.1]*N
 
 #dataframe周り
 columns_name=["Time"]+[str(i) for i in range(N)]
-print(columns_name)
+
 
 past=dt.datetime.now()
 while True:
     now=dt.datetime.now()
-    sers=functions.get_ser(N)
+    sers=functions.get_ser()
     bench=time.time()
     #値を取得 途中で通信が断絶しても動くようにしたい
     grams=[str(now)]
     for i in range(N):
         try:
             grams.append(functions.get_gram(sers[i]))
-        except:
+        except FileNotFoundError:
+            grams.append(False)
+        except IndexError:
             grams.append(False)
     
     if now.second!=past.second:
-        print(sers)
         print(grams)
-        
         csv_name=now.strftime("%Y-%m-%d")+".csv"
         try:
             df=pd.read_csv(csv_name, index_col=0)
@@ -50,12 +63,12 @@ while True:
             df = pd.DataFrame( [grams], columns=columns_name)
         
         df.to_csv(csv_name)
-        print(time.time()-bench)
+        
     
     #dataframe開いてメモ　なければ作る
     past=now
         
-
-    
-
-
+"""
+USBを抜くとこのエラーが出る　serial.serialutil.SerialException
+電源を消すと待機状態になる　これを検出するのが厄介そう
+"""
